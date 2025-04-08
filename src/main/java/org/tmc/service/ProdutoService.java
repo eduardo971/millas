@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.tmc.model.Categoria;
 import org.tmc.model.Estoque;
 import org.tmc.model.Produto;
 
@@ -23,6 +24,9 @@ public class ProdutoService {
 
     private static final String API_URL = "https://apiexternal.mobne.com.br/api/v1/Produto/consulta-cadastro-produto";
     private static final String API_KEY = "ApiKey 6lrFHzvTsSl+Sowjd8ztRv3uqdaGuqL+UhbVh09bqhLsh9YNg9uaaY0RCDCEprIpATRXMN2PC1Q5aNeCE8u4mw==";
+    private static final String EMPRESA_ID = "675";
+    private static final String STATUS_VENDA = "A";
+    private static final String NUMERO_EMPRESA = "2";
 
     private final RestTemplate restTemplate;
 
@@ -35,25 +39,38 @@ public class ProdutoService {
         int pageNumber = 1;
         int pageSize = 100; // Ajuste conforme necessário
         boolean hasMorePages = true;
+        int totalPages = 1; // Inicializa com 1
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", API_KEY);
         headers.set("Accept", "application/json");
 
-        List<Estoque> estoqueList = consultarEstoque();
+        List<Categoria> categoriaList = consultarCategorias();
+        Map<Long, String> categoriaPorId = categoriaList.stream()
+                .collect(Collectors.toMap(Categoria::getCategoriaId, Categoria::getCategoria));
 
-        Map<Long, Double> estoquePorProdutoId = estoqueList.stream()
-                .collect(Collectors.toMap(Estoque::getProdutoId, Estoque::getQtdeEstoque));
+        // List<Estoque> estoqueList = consultarEstoque();
+        // Map<Long, Double> estoquePorProdutoId = estoqueList.stream()
+        //         .collect(Collectors.toMap(Estoque::getProdutoId, Estoque::getQtdeEstoque));
 
-        while (hasMorePages) {
-            String url = API_URL + "?Filter.EmpresaId=675&Filter.StatusVenda=A&PageSize=" + pageSize + "&PageNumber=" + pageNumber;
+        while (pageNumber <= totalPages && hasMorePages) {
+            String url = API_URL + "?Filter.EmpresaId=" + EMPRESA_ID
+                    + "&Filter.StatusVenda=" + STATUS_VENDA
+                    + "&PageSize=" + pageSize
+                    + "&PageNumber=" + pageNumber;
             HttpEntity<String> entity = new HttpEntity<>(headers);
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
             try {
                 ObjectMapper objectMapper = new ObjectMapper();
                 JsonNode rootNode = objectMapper.readTree(response.getBody());
-                JsonNode itemsNode = rootNode.path("Data").path("Items");
+                JsonNode dataNode = rootNode.path("Data");
+                JsonNode itemsNode = dataNode.path("Items");
+                JsonNode pagingNode = dataNode.path("Paging");
+
+                if (pagingNode.has("TotalPages")) {
+                    totalPages = pagingNode.path("TotalPages").asInt(1);
+                }
 
                 if (itemsNode.isArray() && itemsNode.size() > 0) {
                     for (JsonNode item : itemsNode) {
@@ -65,13 +82,14 @@ public class ProdutoService {
 
                         Long produtoId = item.path("ProdutoId").asLong();
 
-                        Double estoque = estoquePorProdutoId.getOrDefault(produtoId, 0.0);
+                        Double estoque = 1.0;
 
                         if (estoque <= 0) {
                             continue;
                         }
 
                         Long categoriaId = item.path("CategoriaId").asLong();
+                        String nomeCategoria = categoriaPorId.get(categoriaId);
 
                         Double preco = null;
 
@@ -84,7 +102,7 @@ public class ProdutoService {
                             }
                         }
 
-                        produtos.add(new Produto(produtoId, descricaoReduzida, categoriaId, preco, estoque));
+                        produtos.add(new Produto(produtoId, descricaoReduzida, nomeCategoria, preco, estoque));
                     }
                 } else {
                     hasMorePages = false;
@@ -103,7 +121,7 @@ public class ProdutoService {
 
     public List<Estoque> consultarEstoque() {
         String url = "https://apiexternal.mobne.com.br/api/v1/Produto/consulta-estoque-produto"
-                + "?Filter.NroEmpresa=2";
+                + "?Filter.NroEmpresa=" + NUMERO_EMPRESA;
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "ApiKey 6lrFHzvTsSl+Sowjd8ztRv3uqdaGuqL+UhbVh09bqhLsh9YNg9uaaY0RCDCEprIpATRXMN2PC1Q5aNeCE8u4mw==");
@@ -137,6 +155,54 @@ public class ProdutoService {
         }
 
         return estoqueList;
+    }
+
+    public List<Categoria> consultarCategorias() {
+        String urlBase = "https://apiexternal.mobne.com.br/api/v1/Produto/consulta-cadastro-categoria";
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "ApiKey 6lrFHzvTsSl+Sowjd8ztRv3uqdaGuqL+UhbVh09bqhLsh9YNg9uaaY0RCDCEprIpATRXMN2PC1Q5aNeCE8u4mw==");
+        headers.set("Accept", "application/json");
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        List<Categoria> categorias = new ArrayList<>();
+        int pageNumber = 1;
+        int totalPages = 1; // Inicializa com 1 para entrar no loop
+
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
+
+            while (pageNumber <= totalPages) {
+                String urlCompleta = urlBase + "?PageNumber=" + pageNumber;
+                ResponseEntity<String> response = restTemplate.exchange(urlCompleta, HttpMethod.GET, entity, String.class);
+                JsonNode rootNode = objectMapper.readTree(response.getBody());
+                JsonNode dataNode = rootNode.path("Data");
+                JsonNode itemsNode = dataNode.path("Items");
+                JsonNode pagingNode = dataNode.path("Paging");
+
+                if (pagingNode.has("TotalPages")) {
+                    totalPages = pagingNode.path("TotalPages").asInt(1);
+                }
+
+                if (itemsNode.isArray()) {
+                    for (JsonNode itemNode : itemsNode) {
+                        Long categoriaId = itemNode.path("CategoriaId").asLong();
+                        String categoriaNome = itemNode.path("Categoria").asText();
+
+                        Categoria categoria = new Categoria();
+                        categoria.setCategoriaId(categoriaId);
+                        categoria.setCategoria(categoriaNome);
+                        categorias.add(categoria);
+                    }
+                }
+
+                pageNumber++;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return categorias;
     }
 
     public void salvarEmCSV(List<Produto> produtos) {
