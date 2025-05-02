@@ -2,16 +2,16 @@ package org.tmc.model;
 
 public class Produto {
     private Long produtoId;
-    private String descricaoReduzida;
+    private String descricao;
     private String categoria;
     private Double preco;
     private Double estoqueMinimo;
 
     public Produto() {}
 
-    public Produto(Long produtoId, String descricaoReduzida, String categoria, Double preco, Double estoqueMinimo) {
+    public Produto(Long produtoId, String descricao, String categoria, Double preco, Double estoqueMinimo) {
         this.produtoId = produtoId;
-        this.descricaoReduzida = descricaoReduzida;
+        this.descricao = descricao;
         this.categoria = categoria;
         this.preco = preco;
         this.estoqueMinimo = estoqueMinimo;
@@ -25,12 +25,12 @@ public class Produto {
         this.produtoId = produtoId;
     }
 
-    public String getDescricaoReduzida() {
-        return descricaoReduzida;
+    public String getDescricao() {
+        return descricao;
     }
 
-    public void setDescricaoReduzida(String descricaoReduzida) {
-        this.descricaoReduzida = descricaoReduzida;
+    public void setdescricao(String descricao) {
+        this.descricao = descricao;
     }
 
     public String getCategoriaId() {
@@ -61,7 +61,7 @@ public class Produto {
     public String toString() {
         return "Produto{" +
                 "produtoId=" + produtoId +
-                ", descricaoReduzida='" + descricaoReduzida + '\'' +
+                ", descricao='" + descricao + '\'' +
                 ", categoriaId=" + categoria +
                 ", preco=" + preco +
                 ", estoqueMinimo=" + estoqueMinimo +

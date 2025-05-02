@@ -74,9 +74,9 @@ public class ProdutoService {
 
                 if (itemsNode.isArray() && itemsNode.size() > 0) {
                     for (JsonNode item : itemsNode) {
-                        String descricaoReduzida = item.path("DescricaoReduzida").asText(null);
+                        String descricao = item.path("Descricao").asText(null);
 
-                        if (descricaoReduzida == null || descricaoReduzida.trim().isEmpty()) {
+                        if (descricao == null || descricao.trim().isEmpty()) {
                             continue;
                         }
 
@@ -102,7 +102,7 @@ public class ProdutoService {
                             }
                         }
 
-                        produtos.add(new Produto(produtoId, descricaoReduzida, nomeCategoria, preco, estoque));
+                        produtos.add(new Produto(produtoId, descricao, nomeCategoria, preco, estoque));
                     }
                 } else {
                     hasMorePages = false;
@@ -214,7 +214,7 @@ public class ProdutoService {
 
             // Preenchendo o arquivo com os produtos
             for (Produto produto : produtos) {
-                writer.append(produto.getDescricaoReduzida()).append(";");
+                writer.append(produto.getDescricao()).append(";");
                 writer.append(String.valueOf(produto.getProdutoId())).append(";");
                 writer.append(String.valueOf(produto.getPreco())).append(";");
                 writer.append(String.valueOf(produto.getCategoriaId())).append(";");
